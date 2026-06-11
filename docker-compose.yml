@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: laboriq-postgres
+    environment:
+      POSTGRES_DB: laboriq
+      POSTGRES_USER: laboriq
+      POSTGRES_PASSWORD: laboriq
+    ports:
+      - "5432:5432"
+    volumes:
+      - laboriq-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  laboriq-postgres-data:

@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: laboriq
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/laboriq}
+    username: ${SPRING_DATASOURCE_USERNAME:laboriq}
+    password: ${SPRING_DATASOURCE_PASSWORD:laboriq}
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+laboriq:
+  bls:
+    base-url: ${BLS_BASE_URL:https://api.bls.gov/publicAPI/v2}
+    registration-key: ${BLS_API_KEY:}
+    sample-runner-enabled: ${BLS_SAMPLE_RUNNER_ENABLED:true}
+    request-timeout: ${BLS_REQUEST_TIMEOUT:10s}
+    sample-series-ids:
+      - ${BLS_SAMPLE_SERIES_ID:WMU00140201020000001300002500}

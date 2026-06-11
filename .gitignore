@@ -1,0 +1,23 @@
+# Java / Maven
+backend/target/
+
+# Node / Vite
+frontend/node_modules/
+frontend/dist/
+
+# Python
+data-pipeline/.venv/
+data-pipeline/__pycache__/
+data-pipeline/**/*.pyc
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+Thumbs.db
+.DS_Store
