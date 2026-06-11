@@ -27,3 +27,6 @@ laboriq:
       - ${BLS_SAMPLE_SERIES_ID:WMU00140201020000001300002500}
     sample-soc-code: ${BLS_SAMPLE_SOC_CODE:13-0000}
     sample-occupation-title: ${BLS_SAMPLE_OCCUPATION_TITLE:Business and Financial Operations Occupations}
+
+server:
+  port: 8081

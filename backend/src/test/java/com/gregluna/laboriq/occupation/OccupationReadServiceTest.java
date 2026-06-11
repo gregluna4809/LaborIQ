@@ -20,6 +20,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -71,6 +72,14 @@ class OccupationReadServiceTest {
         assertThat(results).hasSize(1);
         assertThat(results.getFirst().socCode()).isEqualTo("15-1252");
         assertThat(results.getFirst().title()).isEqualTo("Software Developers");
+    }
+
+    @Test
+    void returnsEmptyListForBlankQuery() {
+        assertThat(occupationReadService.searchOccupations(null)).isEmpty();
+        assertThat(occupationReadService.searchOccupations("")).isEmpty();
+        assertThat(occupationReadService.searchOccupations("   ")).isEmpty();
+        verifyNoInteractions(occupationRepository);
     }
 
     @Test

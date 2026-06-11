@@ -261,6 +261,47 @@ SPRING_DATASOURCE_USERNAME=laboriq
 SPRING_DATASOURCE_PASSWORD=laboriq
 ```
 
+### Password Authentication Failed for User "laboriq"
+
+If Spring Boot startup logs include:
+
+```text
+FATAL: password authentication failed for user "laboriq"
+```
+
+the PostgreSQL container is reachable, but PostgreSQL rejected the configured credentials. A common local development cause is a stale Docker volume. PostgreSQL only applies `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD` when the data directory is first initialized. If the existing volume was created earlier with different credentials, changing `docker-compose.yml` does not update the database user password inside that existing volume.
+
+You may also see a Hibernate message like:
+
+```text
+Unable to determine Dialect without JDBC metadata
+```
+
+That Hibernate message is secondary. Hibernate tries to connect to the database to inspect JDBC metadata and infer the dialect. Because PostgreSQL rejects authentication first, Hibernate cannot read metadata and reports the dialect failure afterward.
+
+For a disposable local development database, reset the PostgreSQL volume from the repository root:
+
+```powershell
+docker compose down -v
+docker compose up -d postgres
+docker exec -it laboriq-postgres psql -U laboriq -d laboriq
+```
+
+Use `docker compose down -v` only when you are comfortable deleting the local development database volume and all data inside it. This is appropriate for resetting stale local credentials, but not for preserving local test data.
+
+After confirming `psql` connects, exit with:
+
+```sql
+\q
+```
+
+Then restart the backend:
+
+```powershell
+cd .\backend
+mvn spring-boot:run
+```
+
 ### Sample Persistence Disabled
 
 If logs do not show sample persistence activity, this is expected unless the opt-in flag is enabled:

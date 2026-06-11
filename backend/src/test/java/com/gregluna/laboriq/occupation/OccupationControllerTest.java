@@ -51,6 +51,15 @@ class OccupationControllerTest {
     }
 
     @Test
+    void searchWithBlankQueryReturnsEmptyList() throws Exception {
+        when(occupationReadService.searchOccupations("")).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/occupations/search").param("q", ""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
     void getOccupationReturnsOccupationDto() throws Exception {
         when(occupationReadService.getOccupationBySocCode("15-1252"))
                 .thenReturn(new OccupationDto(

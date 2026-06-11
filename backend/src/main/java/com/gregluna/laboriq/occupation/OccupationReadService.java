@@ -26,6 +26,9 @@ public class OccupationReadService {
 
     public List<OccupationDto> searchOccupations(String query) {
         String normalizedQuery = query == null ? "" : query.trim();
+        if (normalizedQuery.isEmpty()) {
+            return List.of();
+        }
         return occupationRepository
                 .findByTitleContainingIgnoreCaseOrSocCodeContainingIgnoreCaseOrderByTitleAsc(
                         normalizedQuery,
