@@ -10,7 +10,10 @@ public record BlsProperties(
         String baseUrl,
         String registrationKey,
         boolean sampleRunnerEnabled,
+        boolean persistSampleEnabled,
         Duration requestTimeout,
-        List<String> sampleSeriesIds
+        List<String> sampleSeriesIds,
+        String sampleSocCode,
+        String sampleOccupationTitle
 ) {
 }

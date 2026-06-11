@@ -21,6 +21,9 @@ laboriq:
     base-url: ${BLS_BASE_URL:https://api.bls.gov/publicAPI/v2}
     registration-key: ${BLS_API_KEY:}
     sample-runner-enabled: ${BLS_SAMPLE_RUNNER_ENABLED:true}
+    persist-sample-enabled: ${BLS_PERSIST_SAMPLE_ENABLED:false}
     request-timeout: ${BLS_REQUEST_TIMEOUT:10s}
     sample-series-ids:
       - ${BLS_SAMPLE_SERIES_ID:WMU00140201020000001300002500}
+    sample-soc-code: ${BLS_SAMPLE_SOC_CODE:13-0000}
+    sample-occupation-title: ${BLS_SAMPLE_OCCUPATION_TITLE:Business and Financial Operations Occupations}

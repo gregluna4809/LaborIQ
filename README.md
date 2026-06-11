@@ -53,3 +53,17 @@ npm run dev
 ```powershell
 docker compose up -d postgres
 ```
+
+### BLS Sample Persistence Spike
+
+The backend includes a small opt-in BLS integration spike that can retrieve one public BLS wage series, map the latest annual data point to the existing occupation domain model, persist one occupation and one wage record, and record the attempt in `etl_runs`.
+
+Persistence is disabled by default. To run it locally, start PostgreSQL and set:
+
+```powershell
+$env:BLS_PERSIST_SAMPLE_ENABLED="true"
+cd .\backend
+mvn spring-boot:run
+```
+
+This is only a connectivity and mapping proof. It does not create REST endpoints, scheduled jobs, frontend changes, or bulk ingestion.
