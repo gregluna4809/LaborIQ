@@ -9,5 +9,7 @@ public interface OccupationWageRepository extends JpaRepository<OccupationWage, 
 
     List<OccupationWage> findByOccupationSocCodeOrderByYearDesc(String socCode);
 
+    Optional<OccupationWage> findFirstByOccupationSocCodeOrderByYearDesc(String socCode);
+
     Optional<OccupationWage> findByOccupationSocCodeAndYear(String socCode, Short year);
 }
