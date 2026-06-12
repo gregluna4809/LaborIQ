@@ -14,4 +14,12 @@ public final class OccupationEntityFactory {
         wage.setMeanWage(meanWage);
         return wage;
     }
+
+    public static OccupationWage blankWage() {
+        return new OccupationWage();
+    }
+
+    public static OccupationEmployment blankEmployment() {
+        return new OccupationEmployment();
+    }
 }

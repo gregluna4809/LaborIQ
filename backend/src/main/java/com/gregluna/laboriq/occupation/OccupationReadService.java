@@ -116,7 +116,11 @@ public class OccupationReadService {
                 wage.getOccupation().getSocCode(),
                 wage.getYear(),
                 wage.getMedianWage(),
-                wage.getMeanWage()
+                wage.getMeanWage(),
+                wage.getP10Wage(),
+                wage.getP25Wage(),
+                wage.getP75Wage(),
+                wage.getP90Wage()
         );
     }
 

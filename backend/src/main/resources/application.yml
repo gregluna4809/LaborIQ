@@ -27,6 +27,10 @@ laboriq:
       - ${BLS_SAMPLE_SERIES_ID:WMU00140201020000001300002500}
     sample-soc-code: ${BLS_SAMPLE_SOC_CODE:13-0000}
     sample-occupation-title: ${BLS_SAMPLE_OCCUPATION_TITLE:Business and Financial Operations Occupations}
+    oews:
+      local-file-path: ${BLS_OEWS_LOCAL_FILE_PATH:}
+      dataset-url: ${BLS_OEWS_DATASET_URL:https://www.bls.gov/oes/special.requests/oesm25nat.zip}
+      year: ${BLS_OEWS_YEAR:2025}
 
 server:
   port: 8081

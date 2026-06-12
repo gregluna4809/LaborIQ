@@ -40,4 +40,16 @@ public class OccupationWage extends BaseEntity {
 
     @Column(name = "mean_wage", precision = 12, scale = 2)
     private BigDecimal meanWage;
+
+    @Column(name = "p10_wage", precision = 12, scale = 2)
+    private BigDecimal p10Wage;
+
+    @Column(name = "p25_wage", precision = 12, scale = 2)
+    private BigDecimal p25Wage;
+
+    @Column(name = "p75_wage", precision = 12, scale = 2)
+    private BigDecimal p75Wage;
+
+    @Column(name = "p90_wage", precision = 12, scale = 2)
+    private BigDecimal p90Wage;
 }

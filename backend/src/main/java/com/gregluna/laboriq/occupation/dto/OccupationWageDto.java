@@ -7,6 +7,10 @@ public record OccupationWageDto(
         String socCode,
         Short year,
         BigDecimal medianWage,
-        BigDecimal meanWage
+        BigDecimal meanWage,
+        BigDecimal p10Wage,
+        BigDecimal p25Wage,
+        BigDecimal p75Wage,
+        BigDecimal p90Wage
 ) {
 }

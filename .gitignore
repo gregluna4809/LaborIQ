@@ -21,3 +21,8 @@ data-pipeline/**/*.pyc
 *.iml
 Thumbs.db
 .DS_Store
+
+# Raw BLS data files — download manually, do not commit (see data/raw/oews/README.md)
+data/raw/**/*.zip
+data/raw/**/*.xlsx
+data/raw/**/*.xls

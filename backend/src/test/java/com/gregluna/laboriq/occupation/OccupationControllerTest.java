@@ -84,7 +84,8 @@ class OccupationControllerTest {
                         "15-1252",
                         (short) 2024,
                         new BigDecimal("132270.00"),
-                        new BigDecimal("138110.00")
+                        new BigDecimal("138110.00"),
+                        null, null, null, null
                 )));
 
         mockMvc.perform(get("/api/occupations/{socCode}/wages", "15-1252"))
@@ -103,7 +104,8 @@ class OccupationControllerTest {
                         "15-1252",
                         (short) 2024,
                         new BigDecimal("132270.00"),
-                        new BigDecimal("138110.00")
+                        new BigDecimal("138110.00"),
+                        null, null, null, null
                 ));
 
         mockMvc.perform(get("/api/occupations/{socCode}/wages/latest", "15-1252"))
