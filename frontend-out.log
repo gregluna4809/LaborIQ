@@ -1,0 +1,30 @@
+
+> laboriq-frontend@0.0.1 dev
+> vite
+
+Port 5173 is in use, trying another one...
+
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m205[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5174[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[2m11:18:33 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/WageDistributionChart.tsx[22m
+[2m11:18:33 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/SkeletonCard.tsx[22m
+[2m11:18:33 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/OccupationCard.tsx[22m
+[2m11:18:33 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/Header.tsx[22m
+[2m11:18:33 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/OccupationDetailPage.tsx[22m
+[2m11:18:33 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/SearchPage.tsx[22m
+[2m11:18:33 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/OccupationDetailPage.tsx, /src/components/WageDistributionChart.tsx, /src/components/OccupationCard.tsx[22m
+[2m11:25:08 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles.css[22m
+[2m11:25:12 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.tsx[22m
+[2m11:25:15 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/OccupationResults.tsx[22m
+[2m11:25:18 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/SearchPage.tsx, /src/pages/OccupationDetailPage.tsx, /src/components/OccupationCard.tsx[22m
+ts/OccupationCard.tsx[22m
+[2m11:18:33 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/Header.tsx[22m
+[2m11:18:33 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/OccupationDetailPage.tsx[22m
+[2m11:18:33 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/SearchPage.tsx[22m
+[2m11:18:33 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/OccupationCard.tsx, /src/pages/OccupationDetailPage.tsx, /src/components/WageDistributionChart.tsx[22m
+[2m11:25:08 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/styles.css[22m
+[2m11:25:12 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.tsx[22m
+[2m11:25:15 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/OccupationResults.tsx[22m
+[2m11:25:18 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/OccupationCard.tsx, /src/pages/SearchPage.tsx, /src/pages/OccupationDetailPage.tsx[22m

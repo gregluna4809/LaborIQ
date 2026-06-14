@@ -1,5 +1,6 @@
 package com.gregluna.laboriq.occupation;
 
+import com.gregluna.laboriq.config.SecurityConfig;
 import com.gregluna.laboriq.occupation.dto.OccupationDto;
 import com.gregluna.laboriq.occupation.dto.OccupationEducationDto;
 import com.gregluna.laboriq.occupation.dto.OccupationEmploymentDto;
@@ -10,6 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -23,6 +26,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = OccupationController.class)
+@Import(SecurityConfig.class)
+@TestPropertySource(properties = "laboriq.admin.api-key=test-key")
 class OccupationControllerTest {
 
     @Autowired

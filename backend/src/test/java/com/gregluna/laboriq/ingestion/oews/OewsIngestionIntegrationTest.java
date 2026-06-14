@@ -3,6 +3,7 @@ package com.gregluna.laboriq.ingestion.oews;
 import com.gregluna.laboriq.etl.EtlRunRepository;
 import com.gregluna.laboriq.etl.EtlRunStatus;
 import com.gregluna.laboriq.etl.dto.EtlRunDto;
+import com.gregluna.laboriq.etl.dto.OewsJobAcceptedDto;
 import com.gregluna.laboriq.occupation.OccupationEmploymentRepository;
 import com.gregluna.laboriq.occupation.OccupationRepository;
 import com.gregluna.laboriq.occupation.OccupationWageRepository;
@@ -77,8 +78,10 @@ class OewsIngestionIntegrationTest {
     void ingestsOccupationsWagesAndEmployment() throws Exception {
         when(downloadService.download(anyString())).thenReturn(buildTestZip());
 
-        EtlRunDto result = ingestionService.ingest();
+        OewsJobAcceptedDto accepted = ingestionService.trigger();
+        assertThat(accepted.status()).isEqualTo(EtlRunStatus.RUNNING);
 
+        EtlRunDto result = awaitCompletion(accepted.etlRunId());
         assertThat(result.status()).isEqualTo(EtlRunStatus.COMPLETED);
         assertThat(result.recordsProcessed()).isEqualTo(3L);
         assertThat(result.endTime()).isNotNull();
@@ -91,8 +94,8 @@ class OewsIngestionIntegrationTest {
     void upsertIsIdempotent() throws Exception {
         when(downloadService.download(anyString())).thenReturn(buildTestZip());
 
-        ingestionService.ingest();
-        ingestionService.ingest();
+        awaitCompletion(ingestionService.trigger().etlRunId());
+        awaitCompletion(ingestionService.trigger().etlRunId());
 
         assertThat(occupationRepository.count()).isEqualTo(3L);
         assertThat(wageRepository.count()).isEqualTo(3L);
@@ -102,7 +105,8 @@ class OewsIngestionIntegrationTest {
     @Test
     void wagesContainPercentileData() throws Exception {
         when(downloadService.download(anyString())).thenReturn(buildTestZip());
-        ingestionService.ingest();
+
+        awaitCompletion(ingestionService.trigger().etlRunId());
 
         var wages = wageRepository.findByOccupationSocCodeOrderByYearDesc("15-1252");
         assertThat(wages).hasSize(1);
@@ -116,10 +120,11 @@ class OewsIngestionIntegrationTest {
     }
 
     @Test
-    void recordsFailedEtlRunOnDownloadError() {
+    void recordsFailedEtlRunOnDownloadError() throws Exception {
         when(downloadService.download(anyString())).thenThrow(new RuntimeException("network error"));
 
-        EtlRunDto result = ingestionService.ingest();
+        OewsJobAcceptedDto accepted = ingestionService.trigger();
+        EtlRunDto result = awaitCompletion(accepted.etlRunId());
 
         assertThat(result.status()).isEqualTo(EtlRunStatus.FAILED);
         assertThat(result.errorMessage()).isEqualTo("network error");
@@ -127,10 +132,23 @@ class OewsIngestionIntegrationTest {
         assertThat(occupationRepository.count()).isZero();
     }
 
+    // Polls until the ETL run leaves RUNNING state (COMPLETED or FAILED).
+    // Timeout: 5 seconds — sufficient for in-memory test data; increase if needed for CI.
+    private EtlRunDto awaitCompletion(Long etlRunId) throws InterruptedException {
+        for (int i = 0; i < 50; i++) {
+            EtlRunDto status = ingestionService.getStatus(etlRunId);
+            if (status.status() != EtlRunStatus.RUNNING) {
+                return status;
+            }
+            Thread.sleep(100);
+        }
+        throw new IllegalStateException("EtlRun " + etlRunId + " did not complete within 5 seconds");
+    }
+
     private static byte[] buildTestZip() throws IOException {
         byte[] xlsxBytes = buildTestXlsx();
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try (ZipOutputStream zos = new ZipOutputStream(baos)) {
+        try (var zos = new ZipOutputStream(baos)) {
             zos.putNextEntry(new ZipEntry("national_M2024_dl.xlsx"));
             zos.write(xlsxBytes);
             zos.closeEntry();
@@ -170,21 +188,21 @@ class OewsIngestionIntegrationTest {
             String occCode, String occTitle, String occGroup, long totEmp,
             double aMean, double aMedian, double aPct10, double aPct25, double aPct75, double aPct90) {
         var row = sheet.createRow(rowNum);
-        row.createCell(0).setCellValue(occCode);   // OCC_CODE
-        row.createCell(1).setCellValue(occTitle);  // OCC_TITLE
-        row.createCell(2).setCellValue(occGroup);  // OCC_GROUP
-        row.createCell(3).setCellValue(totEmp);    // TOT_EMP
-        row.createCell(5).setCellValue("#");       // H_MEAN (not applicable)
-        row.createCell(6).setCellValue(aMean);     // A_MEAN
-        row.createCell(8).setCellValue("#");       // H_PCT10
-        row.createCell(9).setCellValue("#");       // H_PCT25
-        row.createCell(10).setCellValue("#");      // H_MEDIAN
-        row.createCell(11).setCellValue("#");      // H_PCT75
-        row.createCell(12).setCellValue("#");      // H_PCT90
-        row.createCell(13).setCellValue(aPct10);   // A_PCT10
-        row.createCell(14).setCellValue(aPct25);   // A_PCT25
-        row.createCell(15).setCellValue(aMedian);  // A_MEDIAN
-        row.createCell(16).setCellValue(aPct75);   // A_PCT75
-        row.createCell(17).setCellValue(aPct90);   // A_PCT90
+        row.createCell(0).setCellValue(occCode);
+        row.createCell(1).setCellValue(occTitle);
+        row.createCell(2).setCellValue(occGroup);
+        row.createCell(3).setCellValue(totEmp);
+        row.createCell(5).setCellValue("#");
+        row.createCell(6).setCellValue(aMean);
+        row.createCell(8).setCellValue("#");
+        row.createCell(9).setCellValue("#");
+        row.createCell(10).setCellValue("#");
+        row.createCell(11).setCellValue("#");
+        row.createCell(12).setCellValue("#");
+        row.createCell(13).setCellValue(aPct10);
+        row.createCell(14).setCellValue(aPct25);
+        row.createCell(15).setCellValue(aMedian);
+        row.createCell(16).setCellValue(aPct75);
+        row.createCell(17).setCellValue(aPct90);
     }
 }

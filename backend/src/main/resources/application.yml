@@ -17,6 +17,8 @@ management:
         include: health,info
 
 laboriq:
+  admin:
+    api-key: ${LABORIQ_ADMIN_API_KEY:}
   bls:
     base-url: ${BLS_BASE_URL:https://api.bls.gov/publicAPI/v2}
     registration-key: ${BLS_API_KEY:}

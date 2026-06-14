@@ -9,4 +9,6 @@ public interface EtlRunRepository extends JpaRepository<EtlRun, Long> {
     List<EtlRun> findBySourceSystemOrderByStartTimeDesc(String sourceSystem);
 
     List<EtlRun> findByStatusOrderByStartTimeDesc(EtlRunStatus status);
+
+    boolean existsBySourceSystemAndStatus(String sourceSystem, EtlRunStatus status);
 }

@@ -2,18 +2,17 @@ package com.gregluna.laboriq.ingestion.oews;
 
 import com.gregluna.laboriq.etl.EtlRun;
 import com.gregluna.laboriq.etl.EtlRunFactory;
+import com.gregluna.laboriq.etl.EtlRunNotFoundException;
 import com.gregluna.laboriq.etl.EtlRunRepository;
 import com.gregluna.laboriq.etl.EtlRunStatus;
+import com.gregluna.laboriq.etl.IngestionConflictException;
 import com.gregluna.laboriq.etl.dto.EtlRunDto;
+import com.gregluna.laboriq.etl.dto.OewsJobAcceptedDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.OffsetDateTime;
-import java.util.List;
 
 @Slf4j
 @Service
@@ -22,57 +21,37 @@ public class OewsIngestionService {
 
     private static final String SOURCE_SYSTEM = "BLS_OEWS";
 
-    private final OewsProperties properties;
-    private final OewsDownloadService downloadService;
-    private final OewsExcelParserService parserService;
-    private final OewsPersistenceService persistenceService;
     private final EtlRunRepository etlRunRepository;
+    private final OewsIngestionWorker ingestionWorker;
 
-    public EtlRunDto ingest() {
+    // synchronized: prevents a TOCTOU race between the exists-check and the INSERT within
+    // a single JVM. The V3 partial unique index (uk_etl_runs_one_running_per_source) is the
+    // DB-level hard stop for multi-instance deployments where this synchronized block is
+    // ineffective across processes.
+    public synchronized OewsJobAcceptedDto trigger() {
+        if (etlRunRepository.existsBySourceSystemAndStatus(SOURCE_SYSTEM, EtlRunStatus.RUNNING)) {
+            throw new IngestionConflictException(SOURCE_SYSTEM);
+        }
+
         EtlRun run = EtlRunFactory.running(SOURCE_SYSTEM, OffsetDateTime.now());
-        etlRunRepository.save(run);
+        etlRunRepository.save(run); // auto-committed: no outer @Transactional
 
-        String source = properties.hasLocalFile() ? "local:" + properties.localFilePath() : properties.datasetUrl();
-        log.info("Starting OEWS ingestion [source={}] for year {}", source, properties.year());
+        log.info("OEWS ingestion job created [etlRunId={}], dispatching to background worker", run.getId());
+        ingestionWorker.runIngestion(run.getId());
 
-        try {
-            byte[] data = properties.hasLocalFile()
-                    ? readLocal(properties.localFilePath())
-                    : downloadService.download(properties.datasetUrl());
-            List<OewsRow> rows = parserService.parse(data);
-            int count = persistenceService.upsertAll(rows, properties.year());
-            markCompleted(run, count);
-            log.info("OEWS ingestion complete: {} records processed", count);
-        } catch (Exception ex) {
-            markFailed(run, ex);
-        }
+        return new OewsJobAcceptedDto(
+                run.getId(),
+                run.getSourceSystem(),
+                run.getStatus(),
+                run.getStartTime(),
+                "Ingestion job started"
+        );
+    }
 
+    public EtlRunDto getStatus(Long id) {
+        EtlRun run = etlRunRepository.findById(id)
+                .orElseThrow(() -> new EtlRunNotFoundException(id));
         return toDto(run);
-    }
-
-    private byte[] readLocal(String path) {
-        try {
-            log.info("Reading OEWS dataset from local file: {}", path);
-            return Files.readAllBytes(Path.of(path));
-        } catch (IOException e) {
-            throw new OewsIngestionException("Cannot read local OEWS file: " + path, e);
-        }
-    }
-
-    private void markCompleted(EtlRun run, long recordsProcessed) {
-        run.setEndTime(OffsetDateTime.now());
-        run.setStatus(EtlRunStatus.COMPLETED);
-        run.setRecordsProcessed(recordsProcessed);
-        etlRunRepository.save(run);
-    }
-
-    private void markFailed(EtlRun run, Exception ex) {
-        run.setEndTime(OffsetDateTime.now());
-        run.setStatus(EtlRunStatus.FAILED);
-        run.setRecordsProcessed(0L);
-        run.setErrorMessage(ex.getMessage());
-        etlRunRepository.save(run);
-        log.error("OEWS ingestion failed: {}", ex.getMessage(), ex);
     }
 
     private EtlRunDto toDto(EtlRun run) {
