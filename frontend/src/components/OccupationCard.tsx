@@ -1,16 +1,14 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getLatestWages, getEmploymentHistory } from '../services/occupationApi';
-import type { OccupationDto, OccupationEmploymentDto, OccupationWageDto } from '../types/occupation';
+import type { OccupationSearchResultDto } from '../types/occupation';
 import { formatCurrency, formatEmployment } from '../utils/format';
 
 interface Props {
-  occupation: OccupationDto;
+  occupation: OccupationSearchResultDto;
 }
 
 type OccGroup = 'DETAILED' | 'BROAD' | 'MAJOR' | string;
 
-function OccGroupBadge({ group }: { group: OccGroup | undefined }) {
+function OccGroupBadge({ group }: { group: OccGroup | null }) {
   if (!group) return null;
   const upper = group.toUpperCase();
   const cls =
@@ -21,18 +19,7 @@ function OccGroupBadge({ group }: { group: OccGroup | undefined }) {
 }
 
 export function OccupationCard({ occupation }: Props) {
-  const [wage, setWage] = useState<OccupationWageDto | null>(null);
-  const [employment, setEmployment] = useState<OccupationEmploymentDto | null>(null);
-
-  useEffect(() => {
-    // Responses ordered DESC by year; first item is most recent.
-    getLatestWages(occupation.socCode).then(setWage).catch(() => setWage(null));
-    getEmploymentHistory(occupation.socCode)
-      .then((list) => setEmployment(list[0] ?? null))
-      .catch(() => setEmployment(null));
-  }, [occupation.socCode]);
-
-  const occGroup = occupation.sourceMetadata?.occGroup as OccGroup | undefined;
+  const occGroup = occupation.occGroup as OccGroup | null;
 
   return (
     <Link to={`/occupations/${occupation.socCode}`} className="occupation-card">
@@ -44,15 +31,19 @@ export function OccupationCard({ occupation }: Props) {
       <div className="card-stats">
         <div className="card-stat">
           <span className="stat-label">Median Wage</span>
-          <span className={`stat-value${wage?.medianWage != null ? ' stat-wage' : ''}`}>
-            {formatCurrency(wage?.medianWage)}
+          <span className={`stat-value${occupation.latestMedianWage != null ? ' stat-wage' : ''}`}>
+            {formatCurrency(occupation.latestMedianWage)}
           </span>
-          {wage?.year != null && <span className="stat-year">{wage.year}</span>}
+          {occupation.latestWageYear != null && (
+            <span className="stat-year">{occupation.latestWageYear}</span>
+          )}
         </div>
         <div className="card-stat">
           <span className="stat-label">Employment</span>
-          <span className="stat-value">{formatEmployment(employment?.employmentCount)}</span>
-          {employment?.year != null && <span className="stat-year">{employment.year}</span>}
+          <span className="stat-value">{formatEmployment(occupation.latestEmploymentCount)}</span>
+          {occupation.latestEmploymentYear != null && (
+            <span className="stat-year">{occupation.latestEmploymentYear}</span>
+          )}
         </div>
       </div>
     </Link>

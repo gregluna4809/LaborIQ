@@ -3,6 +3,7 @@ package com.gregluna.laboriq.occupation;
 import com.gregluna.laboriq.occupation.dto.OccupationDto;
 import com.gregluna.laboriq.occupation.dto.OccupationEducationDto;
 import com.gregluna.laboriq.occupation.dto.OccupationEmploymentDto;
+import com.gregluna.laboriq.occupation.dto.OccupationSearchResultDto;
 import com.gregluna.laboriq.occupation.dto.OccupationSkillDto;
 import com.gregluna.laboriq.occupation.dto.OccupationWageDto;
 import com.gregluna.laboriq.occupation.dto.RelatedOccupationDto;
@@ -61,17 +62,49 @@ class OccupationReadServiceTest {
     @Test
     void searchesOccupationsByTitleOrSocCode() {
         Occupation occupation = occupation("15-1252", "Software Developers");
-        occupation.setSourceMetadata(Map.of("source", "test"));
+        occupation.setSourceMetadata(Map.of("source", "test", "occGroup", "DETAILED"));
         when(occupationRepository.findByTitleContainingIgnoreCaseOrSocCodeContainingIgnoreCaseOrderByTitleAsc(
                 "software",
                 "software"
         )).thenReturn(List.of(occupation));
+        when(occupationWageRepository.findByOccupationSocCodeIn(List.of("15-1252")))
+                .thenReturn(List.of(
+                        wage(occupation, (short) 2023, "126500.00", "131000.00"),
+                        wage(occupation, (short) 2024, "132270.00", "138110.00")
+                ));
+        when(occupationEmploymentRepository.findByOccupationSocCodeIn(List.of("15-1252")))
+                .thenReturn(List.of(employment(occupation, (short) 2024, 1900000L)));
 
-        List<OccupationDto> results = occupationReadService.searchOccupations(" software ");
+        List<OccupationSearchResultDto> results = occupationReadService.searchOccupations(" software ");
 
         assertThat(results).hasSize(1);
         assertThat(results.getFirst().socCode()).isEqualTo("15-1252");
         assertThat(results.getFirst().title()).isEqualTo("Software Developers");
+        assertThat(results.getFirst().occGroup()).isEqualTo("DETAILED");
+        assertThat(results.getFirst().latestMedianWage()).isEqualByComparingTo("132270.00");
+        assertThat(results.getFirst().latestWageYear()).isEqualTo((short) 2024);
+        assertThat(results.getFirst().latestEmploymentCount()).isEqualTo(1900000L);
+        assertThat(results.getFirst().latestEmploymentYear()).isEqualTo((short) 2024);
+    }
+
+    @Test
+    void searchResultsAllowMissingWageAndEmploymentData() {
+        Occupation occupation = occupation("11-1021", "General and Operations Managers");
+        when(occupationRepository.findByTitleContainingIgnoreCaseOrSocCodeContainingIgnoreCaseOrderByTitleAsc(
+                "manager",
+                "manager"
+        )).thenReturn(List.of(occupation));
+        when(occupationWageRepository.findByOccupationSocCodeIn(List.of("11-1021"))).thenReturn(List.of());
+        when(occupationEmploymentRepository.findByOccupationSocCodeIn(List.of("11-1021"))).thenReturn(List.of());
+
+        List<OccupationSearchResultDto> results = occupationReadService.searchOccupations("manager");
+
+        assertThat(results).hasSize(1);
+        assertThat(results.getFirst().socCode()).isEqualTo("11-1021");
+        assertThat(results.getFirst().latestMedianWage()).isNull();
+        assertThat(results.getFirst().latestWageYear()).isNull();
+        assertThat(results.getFirst().latestEmploymentCount()).isNull();
+        assertThat(results.getFirst().latestEmploymentYear()).isNull();
     }
 
     @Test
@@ -79,7 +112,7 @@ class OccupationReadServiceTest {
         assertThat(occupationReadService.searchOccupations(null)).isEmpty();
         assertThat(occupationReadService.searchOccupations("")).isEmpty();
         assertThat(occupationReadService.searchOccupations("   ")).isEmpty();
-        verifyNoInteractions(occupationRepository);
+        verifyNoInteractions(occupationRepository, occupationWageRepository, occupationEmploymentRepository);
     }
 
     @Test

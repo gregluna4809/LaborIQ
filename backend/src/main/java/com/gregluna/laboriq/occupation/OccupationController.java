@@ -3,6 +3,7 @@ package com.gregluna.laboriq.occupation;
 import com.gregluna.laboriq.occupation.dto.OccupationDto;
 import com.gregluna.laboriq.occupation.dto.OccupationEducationDto;
 import com.gregluna.laboriq.occupation.dto.OccupationEmploymentDto;
+import com.gregluna.laboriq.occupation.dto.OccupationSearchResultDto;
 import com.gregluna.laboriq.occupation.dto.OccupationSkillDto;
 import com.gregluna.laboriq.occupation.dto.OccupationWageDto;
 import com.gregluna.laboriq.occupation.dto.RelatedOccupationDto;
@@ -23,7 +24,9 @@ public class OccupationController {
     private final OccupationReadService occupationReadService;
 
     @GetMapping("/search")
-    public List<OccupationDto> searchOccupations(@RequestParam(name = "q", required = false) String query) {
+    public List<OccupationSearchResultDto> searchOccupations(
+            @RequestParam(name = "q", required = false) String query
+    ) {
         return occupationReadService.searchOccupations(query);
     }
 

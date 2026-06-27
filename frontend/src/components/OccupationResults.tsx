@@ -1,8 +1,8 @@
-import type { OccupationDto } from '../types/occupation';
+import type { OccupationSearchResultDto } from '../types/occupation';
 import { OccupationCard } from './OccupationCard';
 
 interface Props {
-  occupations: OccupationDto[];
+  occupations: OccupationSearchResultDto[];
   query: string;
 }
 

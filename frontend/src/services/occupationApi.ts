@@ -1,5 +1,6 @@
 import type {
   OccupationDto,
+  OccupationSearchResultDto,
   OccupationWageDto,
   OccupationEmploymentDto,
   OccupationSkillDto,
@@ -17,7 +18,7 @@ async function get<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export function searchOccupations(query: string): Promise<OccupationDto[]> {
+export function searchOccupations(query: string): Promise<OccupationSearchResultDto[]> {
   return get(`/api/occupations/search?${new URLSearchParams({ q: query })}`);
 }
 

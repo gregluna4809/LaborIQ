@@ -1,13 +1,22 @@
 package com.gregluna.laboriq.ingestion.oews;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellType;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
+import org.apache.poi.openxml4j.opc.OPCPackage;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.util.IOUtils;
+import org.apache.poi.util.XMLHelper;
+import org.apache.poi.xssf.eventusermodel.ReadOnlySharedStringsTable;
+import org.apache.poi.xssf.eventusermodel.XSSFReader;
+import org.apache.poi.xssf.eventusermodel.XSSFSheetXMLHandler;
+import org.apache.poi.xssf.model.Styles;
+import org.apache.poi.xssf.usermodel.XSSFComment;
 import org.springframework.stereotype.Service;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
 
+import javax.xml.parsers.ParserConfigurationException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -25,6 +34,7 @@ import java.util.zip.ZipInputStream;
 public class OewsExcelParserService {
 
     private static final Set<String> NULL_MARKERS = Set.of("#", "*", "**");
+    private static final int MAX_OEWS_RECORD_BYTES = 600_000_000;
 
     public List<OewsRow> parse(byte[] zipBytes) {
         try {
@@ -32,7 +42,7 @@ public class OewsExcelParserService {
             List<OewsRow> rows = parseXlsx(xlsxBytes);
             log.info("Parsed {} occupation rows from OEWS dataset", rows.size());
             return rows;
-        } catch (IOException e) {
+        } catch (IOException | OpenXML4JException | ParserConfigurationException | SAXException e) {
             throw new OewsIngestionException("Failed to parse OEWS dataset", e);
         }
     }
@@ -51,32 +61,40 @@ public class OewsExcelParserService {
         throw new OewsIngestionException("No .xlsx file found in OEWS ZIP archive");
     }
 
-    private List<OewsRow> parseXlsx(byte[] xlsxBytes) throws IOException {
-        try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(xlsxBytes))) {
-            Sheet sheet = wb.getSheetAt(0);
-            Map<String, Integer> colIndex = buildColumnIndex(sheet.getRow(0));
-            List<OewsRow> rows = new ArrayList<>();
-            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
-                Row row = sheet.getRow(i);
-                if (row == null) continue;
-                OewsRow parsed = parseRow(row, colIndex);
-                if (parsed != null) rows.add(parsed);
+    private List<OewsRow> parseXlsx(byte[] xlsxBytes)
+            throws IOException, OpenXML4JException, ParserConfigurationException, SAXException {
+        IOUtils.setByteArrayMaxOverride(MAX_OEWS_RECORD_BYTES);
+        try (OPCPackage pkg = OPCPackage.open(new ByteArrayInputStream(xlsxBytes))) {
+            XSSFReader reader = new XSSFReader(pkg);
+            Styles styles = reader.getStylesTable();
+            ReadOnlySharedStringsTable sharedStrings = new ReadOnlySharedStringsTable(pkg);
+            XSSFReader.SheetIterator sheets = (XSSFReader.SheetIterator) reader.getSheetsData();
+            if (!sheets.hasNext()) {
+                return List.of();
             }
-            return rows;
+
+            StreamingSheetHandler sheetHandler = new StreamingSheetHandler();
+            XMLReader parser = XMLHelper.newXMLReader();
+            parser.setContentHandler(new XSSFSheetXMLHandler(
+                    styles,
+                    sharedStrings,
+                    sheetHandler,
+                    new DataFormatter(),
+                    false
+            ));
+
+            try (var sheet = sheets.next()) {
+                parser.parse(new InputSource(sheet));
+            }
+            return sheetHandler.rows();
         }
     }
 
-    private Map<String, Integer> buildColumnIndex(Row headerRow) {
-        Map<String, Integer> index = new HashMap<>();
-        if (headerRow == null) return index;
-        for (Cell cell : headerRow) {
-            String name = stringValue(cell);
-            if (name != null) index.put(name.toUpperCase(), cell.getColumnIndex());
+    private OewsRow parseRow(Map<Integer, String> row, Map<String, Integer> colIndex) {
+        if (!isNationalCrossIndustryRow(row, colIndex)) {
+            return null;
         }
-        return index;
-    }
 
-    private OewsRow parseRow(Row row, Map<String, Integer> colIndex) {
         String occCode = getString(row, colIndex, "OCC_CODE");
         if (occCode == null || occCode.isBlank()) return null;
 
@@ -94,59 +112,98 @@ public class OewsExcelParserService {
         );
     }
 
-    private String getString(Row row, Map<String, Integer> colIndex, String col) {
-        Integer idx = colIndex.get(col);
-        if (idx == null) return null;
-        return stringValue(row.getCell(idx));
+    private boolean isNationalCrossIndustryRow(Map<Integer, String> row, Map<String, Integer> colIndex) {
+        String area = getString(row, colIndex, "AREA");
+        String naics = getString(row, colIndex, "NAICS");
+        if (area == null && naics == null) {
+            return true;
+        }
+        return "99".equals(area) && "000000".equals(naics);
     }
 
-    private BigDecimal getDecimal(Row row, Map<String, Integer> colIndex, String col) {
+    private Map<String, Integer> buildColumnIndex(Map<Integer, String> headerRow) {
+        Map<String, Integer> index = new HashMap<>();
+        headerRow.forEach((cellIndex, name) -> {
+            if (name != null && !name.isBlank()) {
+                index.put(name.toUpperCase(), cellIndex);
+            }
+        });
+        return index;
+    }
+
+    private String getString(Map<Integer, String> row, Map<String, Integer> colIndex, String col) {
         Integer idx = colIndex.get(col);
         if (idx == null) return null;
-        Cell cell = row.getCell(idx);
-        if (cell == null || cell.getCellType() == CellType.BLANK) return null;
-        if (cell.getCellType() == CellType.NUMERIC) {
-            return BigDecimal.valueOf(cell.getNumericCellValue()).setScale(2, RoundingMode.HALF_UP);
+        String val = row.get(idx);
+        if (val == null) return null;
+        val = val.trim();
+        return val.isEmpty() ? null : val;
+    }
+
+    private BigDecimal getDecimal(Map<Integer, String> row, Map<String, Integer> colIndex, String col) {
+        String val = getString(row, colIndex, col);
+        if (val == null || NULL_MARKERS.contains(val)) return null;
+        try {
+            return new BigDecimal(val.replace(",", "")).setScale(2, RoundingMode.HALF_UP);
+        } catch (NumberFormatException e) {
+            return null;
         }
-        if (cell.getCellType() == CellType.STRING) {
-            String val = cell.getStringCellValue().trim();
-            if (val.isEmpty() || NULL_MARKERS.contains(val)) return null;
-            try {
-                return new BigDecimal(val).setScale(2, RoundingMode.HALF_UP);
-            } catch (NumberFormatException e) {
-                return null;
+    }
+
+    private Long getLong(Map<Integer, String> row, Map<String, Integer> colIndex, String col) {
+        String val = getString(row, colIndex, col);
+        if (val == null || NULL_MARKERS.contains(val)) return null;
+        try {
+            return Long.parseLong(val.replace(",", ""));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private class StreamingSheetHandler implements XSSFSheetXMLHandler.SheetContentsHandler {
+
+        private final List<OewsRow> rows = new ArrayList<>();
+        private final Map<Integer, String> currentRow = new HashMap<>();
+        private Map<String, Integer> colIndex = Map.of();
+
+        @Override
+        public void startRow(int rowNum) {
+            currentRow.clear();
+        }
+
+        @Override
+        public void endRow(int rowNum) {
+            if (rowNum == 0) {
+                colIndex = buildColumnIndex(currentRow);
+                return;
+            }
+
+            OewsRow row = parseRow(currentRow, colIndex);
+            if (row != null) {
+                rows.add(row);
             }
         }
-        return null;
-    }
 
-    private Long getLong(Row row, Map<String, Integer> colIndex, String col) {
-        Integer idx = colIndex.get(col);
-        if (idx == null) return null;
-        Cell cell = row.getCell(idx);
-        if (cell == null || cell.getCellType() == CellType.BLANK) return null;
-        if (cell.getCellType() == CellType.NUMERIC) return (long) cell.getNumericCellValue();
-        if (cell.getCellType() == CellType.STRING) {
-            String val = cell.getStringCellValue().trim();
-            if (val.isEmpty() || NULL_MARKERS.contains(val)) return null;
-            try {
-                return Long.parseLong(val.replace(",", ""));
-            } catch (NumberFormatException e) {
-                return null;
+        @Override
+        public void cell(String cellReference, String formattedValue, XSSFComment comment) {
+            int column = columnIndex(cellReference);
+            currentRow.put(column, formattedValue);
+        }
+
+        private List<OewsRow> rows() {
+            return rows;
+        }
+
+        private int columnIndex(String cellReference) {
+            int column = 0;
+            for (int i = 0; i < cellReference.length(); i++) {
+                char ch = cellReference.charAt(i);
+                if (ch < 'A' || ch > 'Z') {
+                    break;
+                }
+                column = (column * 26) + (ch - 'A' + 1);
             }
+            return column - 1;
         }
-        return null;
-    }
-
-    private String stringValue(Cell cell) {
-        if (cell == null || cell.getCellType() == CellType.BLANK) return null;
-        if (cell.getCellType() == CellType.STRING) {
-            String val = cell.getStringCellValue().trim();
-            return val.isEmpty() ? null : val;
-        }
-        if (cell.getCellType() == CellType.NUMERIC) {
-            return String.valueOf((long) cell.getNumericCellValue());
-        }
-        return null;
     }
 }

@@ -10,6 +10,46 @@ services:
       - "5432:5432"
     volumes:
       - laboriq-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U laboriq -d laboriq"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: laboriq-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/laboriq
+      SPRING_DATASOURCE_USERNAME: laboriq
+      SPRING_DATASOURCE_PASSWORD: laboriq
+      LABORIQ_ADMIN_API_KEY: local-dev-admin-key
+      BLS_SAMPLE_RUNNER_ENABLED: "false"
+      BLS_OEWS_LOCAL_FILE_PATH: /app/data/raw/oews/oesm25all.zip
+      BLS_OEWS_DATASET_URL: ""
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./data/raw/oews:/app/data/raw/oews:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: laboriq-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
 
 volumes:
   laboriq-postgres-data:

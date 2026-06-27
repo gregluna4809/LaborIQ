@@ -2,17 +2,15 @@
 
 LaborIQ is a labor market intelligence platform for exploring occupations, wages, employment trends, skills, education requirements, and workforce insights using public datasets.
 
-## Planned Architecture
+## Architecture
 
-LaborIQ is planned as a modular full-stack application:
+LaborIQ is a modular full-stack application:
 
 - `backend/`: Spring Boot 3 API service using Java 21, Maven, Spring Web, Spring Data JPA, PostgreSQL, Validation, Actuator, and Lombok.
 - `frontend/`: React, Vite, and TypeScript user interface.
 - `data-pipeline/`: Python workspace for future public dataset ingestion, transformation, and loading workflows.
 - `docs/`: Supporting project documentation.
-- `docker-compose.yml`: Local PostgreSQL service for development.
-
-No database entities, Flyway migrations, business logic, or API endpoints are included in this foundation.
+- `docker-compose.yml`: Local PostgreSQL, backend, and frontend services for development.
 
 ## Technology Stack
 
@@ -52,6 +50,45 @@ npm run dev
 
 ```powershell
 docker compose up -d postgres
+```
+
+### Docker Development Environment
+
+The local Docker workflow uses the official OEWS ZIP already present in the repository at
+`data/raw/oews/oesm25all.zip`. Docker Compose mounts `data/raw/oews` into the backend
+container at `/app/data/raw/oews` and sets:
+
+```text
+BLS_OEWS_LOCAL_FILE_PATH=/app/data/raw/oews/oesm25all.zip
+BLS_OEWS_DATASET_URL=
+```
+
+This keeps local Docker development from downloading OEWS data from BLS, which may block
+automated container requests. The application defaults in `backend/src/main/resources/application.yml`
+are unchanged, so running the backend outside Docker can still download from
+`BLS_OEWS_DATASET_URL` when `BLS_OEWS_LOCAL_FILE_PATH` is not set.
+
+Start the local stack:
+
+```powershell
+docker compose up -d
+```
+
+Trigger OEWS ingestion from the mounted ZIP:
+
+```powershell
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://localhost:8081/api/admin/etl/oews `
+  -Headers @{ "X-API-Key" = "local-dev-admin-key" }
+```
+
+The endpoint returns an accepted job. Use the returned `id` to check completion:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://localhost:8081/api/admin/etl/runs/<id> `
+  -Headers @{ "X-API-Key" = "local-dev-admin-key" }
 ```
 
 ### BLS Sample Persistence Spike

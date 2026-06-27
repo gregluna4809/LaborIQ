@@ -1,9 +1,9 @@
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { OccupationResults } from '../components/OccupationResults';
 import { SkeletonCard } from '../components/SkeletonCard';
 import { searchOccupations } from '../services/occupationApi';
-import type { OccupationDto } from '../types/occupation';
+import type { OccupationSearchResultDto } from '../types/occupation';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
@@ -14,20 +14,13 @@ export function SearchPage() {
   const initialQ = searchParams.get('q') ?? '';
   const [query, setQuery] = useState(initialQ);
   const [status, setStatus] = useState<Status>('idle');
-  const [occupations, setOccupations] = useState<OccupationDto[]>([]);
+  const [occupations, setOccupations] = useState<OccupationSearchResultDto[]>([]);
   const [errorMessage, setErrorMessage] = useState('');
   const [lastQuery, setLastQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const didInit = useRef(false);
 
-  useEffect(() => {
-    if (didInit.current) return;
-    didInit.current = true;
-    if (initialQ) runSearch(initialQ);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function runSearch(q: string) {
+  const runSearch = useCallback(async (q: string) => {
     const term = q.trim();
     if (!term) {
       setStatus('idle');
@@ -46,7 +39,13 @@ export function SearchPage() {
       setStatus('error');
       setErrorMessage(err instanceof Error ? err.message : 'Search failed');
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    if (didInit.current) return;
+    didInit.current = true;
+    if (initialQ) void runSearch(initialQ);
+  }, [initialQ, runSearch]);
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();

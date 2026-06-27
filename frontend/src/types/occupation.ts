@@ -6,6 +6,16 @@ export interface OccupationDto {
   sourceMetadata: Record<string, unknown>;
 }
 
+export interface OccupationSearchResultDto {
+  socCode: string;
+  title: string;
+  occGroup: string | null;
+  latestMedianWage: number | null;
+  latestWageYear: number | null;
+  latestEmploymentCount: number | null;
+  latestEmploymentYear: number | null;
+}
+
 export interface OccupationWageDto {
   id: number;
   socCode: string;

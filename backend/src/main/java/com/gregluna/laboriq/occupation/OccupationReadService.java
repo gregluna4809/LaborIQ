@@ -3,6 +3,7 @@ package com.gregluna.laboriq.occupation;
 import com.gregluna.laboriq.occupation.dto.OccupationDto;
 import com.gregluna.laboriq.occupation.dto.OccupationEducationDto;
 import com.gregluna.laboriq.occupation.dto.OccupationEmploymentDto;
+import com.gregluna.laboriq.occupation.dto.OccupationSearchResultDto;
 import com.gregluna.laboriq.occupation.dto.OccupationSkillDto;
 import com.gregluna.laboriq.occupation.dto.OccupationWageDto;
 import com.gregluna.laboriq.occupation.dto.RelatedOccupationDto;
@@ -10,7 +11,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -24,18 +29,29 @@ public class OccupationReadService {
     private final OccupationEducationRepository occupationEducationRepository;
     private final RelatedOccupationRepository relatedOccupationRepository;
 
-    public List<OccupationDto> searchOccupations(String query) {
+    public List<OccupationSearchResultDto> searchOccupations(String query) {
         String normalizedQuery = query == null ? "" : query.trim();
         if (normalizedQuery.isEmpty()) {
             return List.of();
         }
-        return occupationRepository
+
+        List<Occupation> occupations = occupationRepository
                 .findByTitleContainingIgnoreCaseOrSocCodeContainingIgnoreCaseOrderByTitleAsc(
                         normalizedQuery,
                         normalizedQuery
-                )
-                .stream()
-                .map(this::toOccupationDto)
+                );
+        List<String> socCodes = occupations.stream()
+                .map(Occupation::getSocCode)
+                .toList();
+        Map<String, OccupationWage> latestWages = latestWagesBySocCode(socCodes);
+        Map<String, OccupationEmployment> latestEmployment = latestEmploymentBySocCode(socCodes);
+
+        return occupations.stream()
+                .map(occupation -> toSearchResultDto(
+                        occupation,
+                        latestWages.get(occupation.getSocCode()),
+                        latestEmployment.get(occupation.getSocCode())
+                ))
                 .toList();
     }
 
@@ -108,6 +124,57 @@ public class OccupationReadService {
                 occupation.getDescription(),
                 occupation.getSourceMetadata()
         );
+    }
+
+    private Map<String, OccupationWage> latestWagesBySocCode(List<String> socCodes) {
+        if (socCodes.isEmpty()) {
+            return Map.of();
+        }
+        return occupationWageRepository.findByOccupationSocCodeIn(socCodes)
+                .stream()
+                .collect(Collectors.toMap(
+                        wage -> wage.getOccupation().getSocCode(),
+                        Function.identity(),
+                        (left, right) -> latestByYear(left, right, OccupationWage::getYear)
+                ));
+    }
+
+    private Map<String, OccupationEmployment> latestEmploymentBySocCode(List<String> socCodes) {
+        if (socCodes.isEmpty()) {
+            return Map.of();
+        }
+        return occupationEmploymentRepository.findByOccupationSocCodeIn(socCodes)
+                .stream()
+                .collect(Collectors.toMap(
+                        employment -> employment.getOccupation().getSocCode(),
+                        Function.identity(),
+                        (left, right) -> latestByYear(left, right, OccupationEmployment::getYear)
+                ));
+    }
+
+    private <T> T latestByYear(T left, T right, Function<T, Short> yearExtractor) {
+        return Comparator.comparing(yearExtractor).compare(left, right) >= 0 ? left : right;
+    }
+
+    private OccupationSearchResultDto toSearchResultDto(
+            Occupation occupation,
+            OccupationWage latestWage,
+            OccupationEmployment latestEmployment
+    ) {
+        return new OccupationSearchResultDto(
+                occupation.getSocCode(),
+                occupation.getTitle(),
+                occupationGroup(occupation),
+                latestWage == null ? null : latestWage.getMedianWage(),
+                latestWage == null ? null : latestWage.getYear(),
+                latestEmployment == null ? null : latestEmployment.getEmploymentCount(),
+                latestEmployment == null ? null : latestEmployment.getYear()
+        );
+    }
+
+    private String occupationGroup(Occupation occupation) {
+        Object occGroup = occupation.getSourceMetadata().get("occGroup");
+        return occGroup == null ? null : occGroup.toString();
     }
 
     private OccupationWageDto toWageDto(OccupationWage wage) {

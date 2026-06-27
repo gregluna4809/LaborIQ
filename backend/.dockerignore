@@ -1,0 +1,8 @@
+target/
+*.log
+app.log
+startup.log
+.mvn/
+.idea/
+.vscode/
+*.iml

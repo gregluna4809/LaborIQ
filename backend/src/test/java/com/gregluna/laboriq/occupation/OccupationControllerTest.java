@@ -4,6 +4,7 @@ import com.gregluna.laboriq.config.SecurityConfig;
 import com.gregluna.laboriq.occupation.dto.OccupationDto;
 import com.gregluna.laboriq.occupation.dto.OccupationEducationDto;
 import com.gregluna.laboriq.occupation.dto.OccupationEmploymentDto;
+import com.gregluna.laboriq.occupation.dto.OccupationSearchResultDto;
 import com.gregluna.laboriq.occupation.dto.OccupationSkillDto;
 import com.gregluna.laboriq.occupation.dto.OccupationWageDto;
 import com.gregluna.laboriq.occupation.dto.RelatedOccupationDto;
@@ -37,14 +38,16 @@ class OccupationControllerTest {
     private OccupationReadService occupationReadService;
 
     @Test
-    void searchOccupationsReturnsOccupationDtos() throws Exception {
+    void searchOccupationsReturnsSearchResultDtos() throws Exception {
         when(occupationReadService.searchOccupations("software"))
-                .thenReturn(List.of(new OccupationDto(
-                        1L,
+                .thenReturn(List.of(new OccupationSearchResultDto(
                         "15-1252",
                         "Software Developers",
-                        "Builds software",
-                        Map.of("source", "test")
+                        "DETAILED",
+                        new BigDecimal("132270.00"),
+                        (short) 2024,
+                        1900000L,
+                        (short) 2024
                 )));
 
         mockMvc.perform(get("/api/occupations/search").param("q", "software"))
@@ -52,7 +55,11 @@ class OccupationControllerTest {
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].socCode").value("15-1252"))
                 .andExpect(jsonPath("$[0].title").value("Software Developers"))
-                .andExpect(jsonPath("$[0].sourceMetadata.source").value("test"));
+                .andExpect(jsonPath("$[0].occGroup").value("DETAILED"))
+                .andExpect(jsonPath("$[0].latestMedianWage").value(132270.00))
+                .andExpect(jsonPath("$[0].latestWageYear").value(2024))
+                .andExpect(jsonPath("$[0].latestEmploymentCount").value(1900000L))
+                .andExpect(jsonPath("$[0].latestEmploymentYear").value(2024));
     }
 
     @Test
